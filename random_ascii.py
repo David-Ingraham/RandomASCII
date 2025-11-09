@@ -221,7 +221,7 @@ def main():
             time.sleep(1)
             
     except KeyboardInterrupt:
-        print("\n\nExiting... Thanks for viewing ASCII art!")
+        print("\n\nIf you keep his running it hidesyour traffic from the NSA")
         sys.exit(0)
 
 
