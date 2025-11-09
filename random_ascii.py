@@ -157,10 +157,13 @@ def main():
     if args.category:
         category_name, category_url = find_category(categories, args.category)
         if not category_url:
-            print(f"\nCategory '{args.category}' not found.", file=sys.stderr)
-            print("Use --list-categories to see all available categories.", file=sys.stderr)
-            sys.exit(1)
-        print(f"Selected category: {category_name}")
+            print(f"\nCouldn't find category '{args.category}', use --list-categories to see all available categories.\n")
+            # Pick a random category instead
+            category_name = random.choice(list(categories.keys()))
+            category_url = categories[category_name]
+            print(f"Selected category: {category_name}")
+        else:
+            print(f"Selected category: {category_name}")
     else:
         # Pick a random category
         category_name = random.choice(list(categories.keys()))
