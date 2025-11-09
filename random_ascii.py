@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import random
 import sys
 import argparse
+import time
 
 
 # Headers to mimic a browser request
@@ -125,18 +126,27 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    # Create mutually exclusive group
+    # Create mutually exclusive group for list-categories
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         '--list-categories', '-l',
         action='store_true',
         help='List all available categories and exit'
     )
-    group.add_argument(
+    
+    # Category filter (not mutually exclusive with loop)
+    parser.add_argument(
         '--category', '-c',
         type=str,
         metavar='NAME',
         help='Filter by category name (case-insensitive, partial match)'
+    )
+    
+    # Loop flag (not mutually exclusive with category)
+    parser.add_argument(
+        '--loop',
+        action='store_true',
+        help='Keep displaying random ASCII art (Ctrl+C to exit)'
     )
     
     args = parser.parse_args()
@@ -153,7 +163,8 @@ def main():
         list_categories(categories)
         sys.exit(0)
     
-    # Handle --category flag
+    # Determine if we're filtering by category
+    category_filter = None
     if args.category:
         category_name, category_url = find_category(categories, args.category)
         if not category_url:
@@ -161,30 +172,57 @@ def main():
             # Pick a random category instead
             category_name = random.choice(list(categories.keys()))
             category_url = categories[category_name]
-            print(f"Selected category: {category_name}")
-        else:
-            print(f"Selected category: {category_name}")
-    else:
-        # Pick a random category
-        category_name = random.choice(list(categories.keys()))
-        category_url = categories[category_name]
+        category_filter = (category_name, category_url)
     
-    # Fetch artworks from the selected category
-    artworks = fetch_artworks_from_category(category_url)
-    
-    if not artworks:
-        print("No artworks found in this category!", file=sys.stderr)
-        sys.exit(1)
-    
-    # Pick a random artwork
-    random_artwork = random.choice(artworks)
-    
-    # Display the artwork
-    print("\n" + "="*60)
-    print("RANDOM ASCII ART from https://asciiart.website/browse.php  :")
-    print("="*60 + "\n")
-    print(random_artwork)
-    print("\n" + "="*60)
+    # Main loop for displaying art
+    try:
+        iteration = 0
+        while True:
+            # Select category
+            if category_filter:
+                category_name, category_url = category_filter
+                if iteration == 0 and args.loop:
+                    print(f"Looping with category: {category_name} (Ctrl+C to exit)\n")
+                elif iteration == 0:
+                    print(f"Selected category: {category_name}")
+            else:
+                # Pick a random category
+                category_name = random.choice(list(categories.keys()))
+                category_url = categories[category_name]
+            
+            # Fetch artworks from the selected category
+            artworks = fetch_artworks_from_category(category_url)
+            
+            if not artworks:
+                if not args.loop:
+                    print("No artworks found in this category!", file=sys.stderr)
+                    sys.exit(1)
+                else:
+                    print(f"No artworks found in {category_name}, trying another...\n")
+                    iteration += 1
+                    continue
+            
+            # Pick a random artwork
+            random_artwork = random.choice(artworks)
+            
+            # Display the artwork
+            print("\n" + "="*60)
+            print("RANDOM ASCII ART from https://asciiart.website/browse.php  :")
+            print("="*60 + "\n")
+            print(random_artwork)
+            print("\n" + "="*60)
+            
+            # If not looping, exit after one
+            if not args.loop:
+                break
+            
+            # Small delay before next iteration
+            iteration += 1
+            time.sleep(1)
+            
+    except KeyboardInterrupt:
+        print("\n\nExiting... Thanks for viewing ASCII art!")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
