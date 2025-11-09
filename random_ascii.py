@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 import random
 import sys
+import argparse
 
 
 # Headers to mimic a browser request
@@ -17,7 +18,11 @@ HEADERS = {
 
 
 def fetch_category_links(base_url="https://asciiart.website/browse.php"):
-    """Fetch all category links from the browse page."""
+    """Fetch all category links and names from the browse page.
+    
+    Returns:
+        dict: Dictionary mapping category names to their URLs
+    """
     try:
         response = requests.get(base_url, headers=HEADERS, timeout=10)
         response.raise_for_status()
@@ -28,16 +33,23 @@ def fetch_category_links(base_url="https://asciiart.website/browse.php"):
     soup = BeautifulSoup(response.text, 'html.parser')
     
     # Find all links to category pages (cat.php?category_id=X)
-    category_links = []
+    categories = {}
     for link in soup.find_all('a', href=True):
         href = link['href']
         if 'cat.php?category_id=' in href:
             # Convert relative URL to absolute if needed
             if not href.startswith('http'):
                 href = f"https://asciiart.website/{href}"
-            category_links.append(href)
+            
+            # Get the category name from the link text
+            category_name = link.get_text(strip=True)
+            # Remove the count in parentheses if present
+            if '(' in category_name:
+                category_name = category_name.split('(')[0].strip()
+            
+            categories[category_name] = href
     
-    return category_links
+    return categories
 
 
 def fetch_artworks_from_category(category_url):
@@ -63,32 +75,103 @@ def fetch_artworks_from_category(category_url):
     return artworks
 
 
+def list_categories(categories):
+    """Print all available categories."""
+    print("\nAvailable categories:\n")
+    sorted_categories = sorted(categories.keys())
+    for category in sorted_categories:
+        print(f"  - {category}")
+    print(f"\nTotal: {len(categories)} categories")
+
+
+def find_category(categories, search_term):
+    """Find a category by name (case-insensitive partial match).
+    
+    Args:
+        categories: Dictionary of category names to URLs
+        search_term: String to search for in category names
+        
+    Returns:
+        tuple: (category_name, category_url) if found, (None, None) otherwise
+    """
+    search_lower = search_term.lower()
+    
+    # Try exact match first (case-insensitive)
+    for name, url in categories.items():
+        if name.lower() == search_lower:
+            return name, url
+    
+    # Try partial match
+    matches = [(name, url) for name, url in categories.items() 
+               if search_lower in name.lower()]
+    
+    if len(matches) == 1:
+        return matches[0]
+    elif len(matches) > 1:
+        print(f"\nMultiple categories match '{search_term}':", file=sys.stderr)
+        for name, _ in matches:
+            print(f"  - {name}", file=sys.stderr)
+        print("\nPlease be more specific.", file=sys.stderr)
+        return None, None
+    else:
+        return None, None
+
+
 def main():
     """Main function to fetch and display random ASCII art."""
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description='Fetch random ASCII art from asciiart.website',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     
+    # Create mutually exclusive group
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '--list-categories', '-l',
+        action='store_true',
+        help='List all available categories and exit'
+    )
+    group.add_argument(
+        '--category', '-c',
+        type=str,
+        metavar='NAME',
+        help='Filter by category name (case-insensitive, partial match)'
+    )
     
-    # Get all category links
-    category_links = fetch_category_links()
+    args = parser.parse_args()
     
-    if not category_links:
+    # Get all categories
+    categories = fetch_category_links()
+    
+    if not categories:
         print("No categories found!", file=sys.stderr)
         sys.exit(1)
     
+    # Handle --list-categories flag
+    if args.list_categories:
+        list_categories(categories)
+        sys.exit(0)
     
+    # Handle --category flag
+    if args.category:
+        category_name, category_url = find_category(categories, args.category)
+        if not category_url:
+            print(f"\nCategory '{args.category}' not found.", file=sys.stderr)
+            print("Use --list-categories to see all available categories.", file=sys.stderr)
+            sys.exit(1)
+        print(f"Selected category: {category_name}")
+    else:
+        # Pick a random category
+        category_name = random.choice(list(categories.keys()))
+        category_url = categories[category_name]
     
-    # Pick a random category
-    random_category = random.choice(category_links)
-    
-    
-    # Fetch artworks from that category
-    
-    artworks = fetch_artworks_from_category(random_category)
+    # Fetch artworks from the selected category
+    artworks = fetch_artworks_from_category(category_url)
     
     if not artworks:
         print("No artworks found in this category!", file=sys.stderr)
         sys.exit(1)
-    
-    
     
     # Pick a random artwork
     random_artwork = random.choice(artworks)
