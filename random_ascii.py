@@ -221,7 +221,7 @@ def main():
             time.sleep(1)
             
     except KeyboardInterrupt:
-        print("\n\nIf you keep this running it downloads more free RAM from AWS")
+        
         sys.exit(0)
 
 
