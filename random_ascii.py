@@ -221,7 +221,7 @@ def main():
             time.sleep(1)
             
     except KeyboardInterrupt:
-        print("\n\nIf you keep his running it hidesyour traffic from the NSA")
+        print("\n\nIf you keep his running it hides your traffic from the NSA")
         sys.exit(0)
 
 
