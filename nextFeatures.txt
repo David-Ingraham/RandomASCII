@@ -1,1 +1,3 @@
 llm or custom ascii generator
+
+download all ascii, find a way to serve it effieicnlty at the command line and over a github repo 
