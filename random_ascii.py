@@ -178,6 +178,15 @@ def main():
         help='Color the output (red, green, yellow, blue, magenta, cyan, white). Multiple colors split the art proportionally.'
     )
     
+    # Delay flag
+    parser.add_argument(
+        '--delay',
+        type=float,
+        default=1.0,
+        metavar='SECONDS',
+        help='Delay in seconds between artworks in loop mode (default: 1.0, use 0 for instant)'
+    )
+    
     args = parser.parse_args()
     
     # Connect to database
@@ -256,9 +265,10 @@ def main():
             if not args.loop:
                 break
             
-            # Small delay before next iteration
+            # Delay before next iteration
             iteration += 1
-            time.sleep(1)
+            if args.delay > 0:
+                time.sleep(args.delay)
             
     except KeyboardInterrupt:
         pass
